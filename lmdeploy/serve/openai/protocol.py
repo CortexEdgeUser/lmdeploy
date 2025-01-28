@@ -114,7 +114,7 @@ class ChatCompletionRequest(BaseModel):
     tool_choice: Union[ToolChoice, Literal['auto', 'required', 'none']] = Field(default='auto',
                                                                                 examples=['none'])  # noqa
     logprobs: Optional[bool] = False
-    top_logprobs: Optional[int] = None
+    top_logprobs: Optional[int] = 1
     n: Optional[int] = 1
     logit_bias: Optional[Dict[str, float]] = Field(default=None, examples=[None])  # noqa
     max_tokens: Optional[int] = Field(default=None, examples=[None])
@@ -172,7 +172,7 @@ class TopLogprob(BaseModel):
 
 
 class ChatCompletionTokenLogprob(BaseModel):
-    token: str
+    tokens: Optional[List] = None
     bytes: Optional[List[int]] = None
     logprob: float
     top_logprobs: List[TopLogprob]
@@ -210,7 +210,7 @@ class ChatCompletionResponseStreamChoice(BaseModel):
     """Chat completion response stream choice."""
     index: int
     delta: DeltaMessage
-    logprobs: Optional[ChoiceLogprobs] = None
+    logprobs: Optional[List] = None
     finish_reason: Optional[Literal['stop', 'length']] = None
 
 
@@ -344,3 +344,4 @@ class GenerateResponse(BaseModel):
     input_tokens: int
     history_tokens: int
     finish_reason: Optional[Literal['stop', 'length']] = None
+
