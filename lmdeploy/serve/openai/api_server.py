@@ -173,7 +173,7 @@ def _create_completion_logprobs(tokenizer: Tokenizer,
             if top_id == token_id:
                 out_state = _state
                 offset += len(response)
-                out_logprobs.tokens.append(response)
+                out_logprobs.tokens.append(f"token_id:{token_id}")
 
         out_logprobs.top_logprobs.append(res)
         state = out_state
@@ -200,7 +200,7 @@ def _create_chat_completion_logprobs(tokenizer: Tokenizer,
 
     content: List[ChatCompletionTokenLogprob] = []
     for token_id, tops in zip(token_ids, logprobs):
-        item = ChatCompletionTokenLogprob(token='', bytes=[], logprob=0.0, top_logprobs=[])
+        item = ChatCompletionTokenLogprob(tokens=[], bytes=[], logprob=0.0, top_logprobs=[])
         for top_id, prob in tops.items():
             token = tokenizer.model.model.convert_ids_to_tokens(top_id)
             if isinstance(token, bytes):
@@ -209,7 +209,7 @@ def _create_chat_completion_logprobs(tokenizer: Tokenizer,
             else:
                 _bytes = list(token.encode())  # token is str
             if top_id == token_id:
-                item.token = token
+                item.tokens = [f"token_id:{token_id}"]
                 item.bytes = _bytes
                 item.logprob = prob
             else:
@@ -354,7 +354,7 @@ async def chat_completions_v1(request: ChatCompletionRequest, raw_request: Reque
 
     random_seed = request.seed if request.seed else None
 
-    gen_config = GenerationConfig(max_new_tokens=request.max_tokens,
+    gen_config = GenerationConfig(max_new_tokens=request.max_tokens - 1,
                                   do_sample=True,
                                   logprobs=gen_logprobs,
                                   top_k=request.top_k,
@@ -400,7 +400,7 @@ async def chat_completions_v1(request: ChatCompletionRequest, raw_request: Reque
     def create_stream_response_json(index: int,
                                     text: str,
                                     finish_reason: Optional[str] = None,
-                                    logprobs: Optional[LogProbs] = None,
+                                    logprobs: Optional[List] = None,
                                     usage: Optional[UsageInfo] = None) -> str:
         choice_data = ChatCompletionResponseStreamChoice(index=index,
                                                          delta=DeltaMessage(role='assistant', content=text),
@@ -423,6 +423,7 @@ async def chat_completions_v1(request: ChatCompletionRequest, raw_request: Reque
             if gen_logprobs and res.logprobs:
                 logprobs = _create_chat_completion_logprobs(VariableInterface.async_engine.tokenizer, res.token_ids,
                                                             res.logprobs)
+                logprobs = logprobs.content
             if request.stream_options and request.stream_options.include_usage:
                 total_tokens = sum([res.history_token_len, res.input_token_len, res.generate_token_len])
                 usage = UsageInfo(
@@ -569,7 +570,7 @@ async def completions_v1(request: CompletionRequest, raw_request: Request = None
         request.stop = [request.stop]
     random_seed = request.seed if request.seed else None
 
-    gen_config = GenerationConfig(max_new_tokens=request.max_tokens if request.max_tokens else 512,
+    gen_config = GenerationConfig(max_new_tokens=request.max_tokens - 1 if request.max_tokens else 512,
                                   do_sample=True,
                                   logprobs=request.logprobs,
                                   top_k=request.top_k,
@@ -621,28 +622,29 @@ async def completions_v1(request: CompletionRequest, raw_request: Request = None
             all_token_ids = []
             state = DetokenizeState()
             async for res in generator:
-                logprobs = None
-                usage = None
-                if request.logprobs and res.logprobs:
-                    logprobs, offset, all_token_ids, state = _create_completion_logprobs(  # noqa E501
-                        VariableInterface.async_engine.tokenizer, res.token_ids, res.logprobs,
-                        gen_config.skip_special_tokens, offset, all_token_ids, state,
-                        gen_config.spaces_between_special_tokens)
-                if request.stream_options and request.stream_options.include_usage:  # noqa E501
-                    final_res = res
-                    total_tokens = sum(
-                        [final_res.history_token_len, final_res.input_token_len, final_res.generate_token_len])
-                    usage = UsageInfo(
-                        prompt_tokens=final_res.input_token_len,
-                        completion_tokens=final_res.generate_token_len,
-                        total_tokens=total_tokens,
-                    )
-                response_json = create_stream_response_json(index=0,
-                                                            text=res.response,
-                                                            finish_reason=res.finish_reason,
-                                                            logprobs=logprobs,
-                                                            usage=usage)
-                yield f'data: {response_json}\n\n'
+                if len(res.response) != 0:
+                    logprobs = None
+                    usage = None
+                    if request.logprobs and res.logprobs:
+                        logprobs, offset, all_token_ids, state = _create_completion_logprobs(  # noqa E501
+                            VariableInterface.async_engine.tokenizer, res.token_ids, res.logprobs,
+                            gen_config.skip_special_tokens, offset, all_token_ids, state,
+                            gen_config.spaces_between_special_tokens)
+                    if request.stream_options and request.stream_options.include_usage:  # noqa E501
+                        final_res = res
+                        total_tokens = sum(
+                            [final_res.history_token_len, final_res.input_token_len, final_res.generate_token_len])
+                        usage = UsageInfo(
+                            prompt_tokens=final_res.input_token_len,
+                            completion_tokens=final_res.generate_token_len,
+                            total_tokens=total_tokens,
+                        )
+                    response_json = create_stream_response_json(index=0,
+                                                                text=res.response,
+                                                                finish_reason=res.finish_reason,
+                                                                logprobs=logprobs,
+                                                                usage=usage)
+                    yield f'data: {response_json}\n\n'
         yield 'data: [DONE]\n\n'
 
     # Streaming response
