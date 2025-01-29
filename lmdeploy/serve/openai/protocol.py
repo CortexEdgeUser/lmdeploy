@@ -210,7 +210,7 @@ class ChatCompletionResponseStreamChoice(BaseModel):
     """Chat completion response stream choice."""
     index: int
     delta: DeltaMessage
-    logprobs: Optional[List] = None
+    logprobs: Optional[Any] = None
     finish_reason: Optional[Literal['stop', 'length']] = None
 
 
