@@ -419,24 +419,25 @@ async def chat_completions_v1(request: ChatCompletionRequest, raw_request: Reque
 
     async def completion_stream_generator() -> AsyncGenerator[str, None]:
         async for res in result_generator:
-            logprobs, usage = None, None
-            if gen_logprobs and res.logprobs:
-                logprobs = _create_chat_completion_logprobs(VariableInterface.async_engine.tokenizer, res.token_ids,
-                                                            res.logprobs)
-            logprobs = logprobs.content
-            if request.stream_options and request.stream_options.include_usage:
-                total_tokens = sum([res.history_token_len, res.input_token_len, res.generate_token_len])
-                usage = UsageInfo(
-                    prompt_tokens=res.input_token_len,
-                    completion_tokens=res.generate_token_len,
-                    total_tokens=total_tokens,
-                )
-            response_json = create_stream_response_json(index=0,
-                                                        text=res.response,
-                                                        finish_reason=res.finish_reason,
-                                                        logprobs=logprobs,
-                                                        usage=usage)
-            yield f'data: {response_json}\n\n'
+            if len(res.response) > 0:
+              logprobs, usage = None, None
+              if gen_logprobs and res.logprobs:
+                  logprobs = _create_chat_completion_logprobs(VariableInterface.async_engine.tokenizer, res.token_ids,
+                                                              res.logprobs)
+              logprobs = logprobs.content
+              if request.stream_options and request.stream_options.include_usage:
+                  total_tokens = sum([res.history_token_len, res.input_token_len, res.generate_token_len])
+                  usage = UsageInfo(
+                      prompt_tokens=res.input_token_len,
+                      completion_tokens=res.generate_token_len,
+                      total_tokens=total_tokens,
+                  )
+              response_json = create_stream_response_json(index=0,
+                                                          text=res.response,
+                                                          finish_reason=res.finish_reason,
+                                                          logprobs=logprobs,
+                                                          usage=usage)
+              yield f'data: {response_json}\n\n'
         yield 'data: [DONE]\n\n'
 
     # Streaming response
