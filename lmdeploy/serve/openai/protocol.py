@@ -172,7 +172,7 @@ class TopLogprob(BaseModel):
 
 
 class ChatCompletionTokenLogprob(BaseModel):
-    tokens: Optional[List] = None
+    token: Optional[str] = None
     bytes: Optional[List[int]] = None
     logprob: float
     top_logprobs: List[TopLogprob]
