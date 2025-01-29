@@ -405,7 +405,7 @@ async def chat_completions_v1(request: ChatCompletionRequest, raw_request: Reque
         choice_data = ChatCompletionResponseStreamChoice(index=index,
                                                          delta=DeltaMessage(role='assistant', content=text),
                                                          finish_reason=finish_reason,
-                                                         logprobs=logprobs)
+                                                         logprobs={"content": logprobs})
         response = ChatCompletionStreamResponse(
             id=request_id,
             created=created_time,
@@ -423,6 +423,7 @@ async def chat_completions_v1(request: ChatCompletionRequest, raw_request: Reque
             if gen_logprobs and res.logprobs:
                 logprobs = _create_chat_completion_logprobs(VariableInterface.async_engine.tokenizer, res.token_ids,
                                                             res.logprobs)
+            logprobs = logprobs.content
             if request.stream_options and request.stream_options.include_usage:
                 total_tokens = sum([res.history_token_len, res.input_token_len, res.generate_token_len])
                 usage = UsageInfo(
