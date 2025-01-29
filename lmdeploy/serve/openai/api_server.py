@@ -200,7 +200,7 @@ def _create_chat_completion_logprobs(tokenizer: Tokenizer,
 
     content: List[ChatCompletionTokenLogprob] = []
     for token_id, tops in zip(token_ids, logprobs):
-        item = ChatCompletionTokenLogprob(tokens=[], bytes=[], logprob=0.0, top_logprobs=[])
+        item = ChatCompletionTokenLogprob(token="", bytes=[], logprob=0.0, top_logprobs=[])
         for top_id, prob in tops.items():
             token = tokenizer.model.model.convert_ids_to_tokens(top_id)
             if isinstance(token, bytes):
@@ -209,7 +209,7 @@ def _create_chat_completion_logprobs(tokenizer: Tokenizer,
             else:
                 _bytes = list(token.encode())  # token is str
             if top_id == token_id:
-                item.tokens = [f"token_id:{token_id}"]
+                item.token = f"token_id:{token_id}"
                 item.bytes = _bytes
                 item.logprob = prob
             else:
@@ -423,7 +423,6 @@ async def chat_completions_v1(request: ChatCompletionRequest, raw_request: Reque
             if gen_logprobs and res.logprobs:
                 logprobs = _create_chat_completion_logprobs(VariableInterface.async_engine.tokenizer, res.token_ids,
                                                             res.logprobs)
-                logprobs = logprobs.content
             if request.stream_options and request.stream_options.include_usage:
                 total_tokens = sum([res.history_token_len, res.input_token_len, res.generate_token_len])
                 usage = UsageInfo(
