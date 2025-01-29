@@ -570,7 +570,7 @@ async def completions_v1(request: CompletionRequest, raw_request: Request = None
         request.stop = [request.stop]
     random_seed = request.seed if request.seed else None
 
-    gen_config = GenerationConfig(max_new_tokens=request.max_tokens - 1 if request.max_tokens else 512,
+    gen_config = GenerationConfig(max_new_tokens=request.max_tokens - 1 if request.max_tokens else 512, min_new_tokens=128,
                                   do_sample=True,
                                   logprobs=request.logprobs,
                                   top_k=request.top_k,
