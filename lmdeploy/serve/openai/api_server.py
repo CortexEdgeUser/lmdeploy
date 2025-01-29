@@ -582,6 +582,7 @@ async def completions_v1(request: CompletionRequest, raw_request: Request = None
                                   stop_words=request.stop,
                                   skip_special_tokens=request.skip_special_tokens,
                                   random_seed=random_seed,
+                                  min_new_tokens=request.min_new_tokens,
                                   spaces_between_special_tokens=request.spaces_between_special_tokens)
     generators = []
     for i in range(len(request.prompt)):
